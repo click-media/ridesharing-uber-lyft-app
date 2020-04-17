@@ -45,7 +45,31 @@ class MapsPresenter(private  val networkService: NetworkService): WebSocketListe
             Constants.NEAR_BY_CABS -> {
                 handleOnMessageNearByCabs(jsonObject)
             }
+            Constants.CAB_BOOKED -> {
+                view?.informCabBooked()
+            }
+            Constants.PICKUP_PATH -> {
+                val jsonArray = jsonObject.getJSONArray("path")
+                val pickUpPath  = arrayListOf<LatLng>()
+                for(i in 0 until jsonArray.length()){
+                    val lat = ((jsonArray.get(i)) as JSONObject).getDouble(Constants.LAT)
+                    val lng = ((jsonArray.get(i)) as JSONObject).getDouble(Constants.LNG)
+                    val latlng = LatLng(lat, lng)
+                    pickUpPath.add(latlng)
+                }
+                view?.showPath(pickUpPath)
+            }
         }
+    }
+
+    fun requestCab(pickupLatLng: LatLng, dropLatLng: LatLng){
+        val jsonObject = JSONObject()
+        jsonObject.put(Constants.TYPE, Constants.REQUEST_CABS)
+        jsonObject.put("pickUpLat", pickupLatLng.latitude)
+        jsonObject.put("pickUpLng", pickupLatLng.longitude)
+        jsonObject.put("dropLat", dropLatLng.latitude)
+        jsonObject.put("dropLng", dropLatLng.longitude)
+        webSocket.sendMessage((jsonObject.toString()))
     }
 
     private fun handleOnMessageNearByCabs(jsonObject: JSONObject) {
@@ -65,6 +89,6 @@ class MapsPresenter(private  val networkService: NetworkService): WebSocketListe
     }
 
     override fun onError(error: String) {
-        Log.e("TAG", "error")
+        Log.e("TAG", "$error")
     }
 }
