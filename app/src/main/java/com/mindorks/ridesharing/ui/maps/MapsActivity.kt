@@ -40,6 +40,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, MapsView {
     private var blackPolyLine: Polyline? = null
     private var originMarker: Marker? = null
     private var destinationMarker: Marker? = null
+    private var movingCabMarker: Marker? = null
+    private var previousLatlngFromServer: LatLng? = null
+    private var currentLatlngFromServer: LatLng? = null
     private val nearByCabsMarkerList = arrayListOf<Marker>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -215,16 +218,66 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, MapsView {
 
         originMarker = addOriginDestinationMarkerandGet(latlngList[0])
         originMarker?.setAnchor(0.5f, 0.5f)
-        destinationMarker = addOriginDestinationMarkerandGet(latlngList[latlngList.size-1])
+        destinationMarker = addOriginDestinationMarkerandGet(latlngList[latlngList.size - 1])
         destinationMarker?.setAnchor(0.5f, 0.5f)
 
         val polyLineAnimator = AnimationUtils.polyLineAnimator()
         polyLineAnimator.addUpdateListener {
             val percentValue = (it.animatedValue as Int)
-            val index = (greyPolyLine?.points?.size)!! * (percentValue/100.0f).toInt()
+            val index = (greyPolyLine?.points?.size)!! * (percentValue / 100.0f).toInt()
             blackPolyLine?.points = greyPolyLine?.points!!.subList(0, index)
         }
         polyLineAnimator.start()
+    }
+
+    override fun updateCabLocation(latLng: LatLng) {
+        if (movingCabMarker == null) {
+            movingCabMarker = addCarMarkerandGet(latLng)
+        }
+        if (previousLatlngFromServer == null) {
+            currentLatlngFromServer = latLng
+            previousLatlngFromServer = currentLatlngFromServer
+            movingCabMarker?.position = currentLatlngFromServer
+            movingCabMarker?.setAnchor(0.5f, 0.5f)
+            animateCamera(currentLatlngFromServer)
+        } else {
+            previousLatlngFromServer = currentLatlngFromServer
+            currentLatlngFromServer = latLng
+            val valueAnimator = AnimationUtils.cabAnimator()
+            valueAnimator.addUpdateListener { va ->
+                if (currentLatlngFromServer != null && previousLatlngFromServer != null) {
+                    val multplier = va.animatedFraction
+                    val nextLocation = LatLng(
+                        multplier * currentLatlngFromServer!!.latitude + (1 - multplier) * previousLatlngFromServer!!.latitude,
+                        multplier * currentLatlngFromServer!!.longitude + (1 - multplier) * previousLatlngFromServer!!.longitude
+                    )
+                    movingCabMarker?.position = nextLocation
+                    movingCabMarker?.setAnchor(0.5f, 0.5f)
+                    val rotation = MapUtils.getRotation(
+                        previousLatlngFromServer!!,
+                        nextLocation
+                    )
+                    if (!rotation.isNaN()) {
+                        movingCabMarker?.rotation = rotation
+                    }
+                    animateCamera(nextLocation)
+                }
+            }
+            valueAnimator.start()
+
+        }
+    }
+
+    override fun informCabIsArriving() {
+        statusTextView.text = getString(R.string.your_cab_is_arriving)
+    }
+
+    override fun informCabArrived() {
+        statusTextView.text = getString(R.string.your_cab_has_arrived)
+        greyPolyLine?.remove()
+        blackPolyLine?.remove()
+        originMarker?.remove()
+        destinationMarker?.remove()
     }
 
 
