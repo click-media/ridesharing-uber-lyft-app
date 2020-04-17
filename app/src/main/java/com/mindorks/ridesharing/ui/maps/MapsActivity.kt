@@ -76,6 +76,44 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, MapsView {
             dropTextView.isEnabled = false
             presenter.requestCab(pickUpLatLng!!, dropLatLng!!)
         }
+
+        nextRideButton.setOnClickListener {
+            reset()
+        }
+    }
+
+    private fun reset() {
+        statusTextView.visibility = View.GONE
+        nextRideButton.visibility = View.GONE
+        nearByCabsMarkerList.forEach {
+            it.remove()
+        }
+        nearByCabsMarkerList.clear()
+        currentLatlngFromServer = null
+        previousLatlngFromServer = null
+        if (currentLatLng != null){
+            moveCamera(currentLatLng)
+            animateCamera(currentLatLng)
+            setCurrentLocationAsPickup()
+            presenter.requestNearByCabs(currentLatLng!!)
+        } else {
+            pickUpTextView.text = ""
+        }
+
+        pickUpTextView.isEnabled = true
+        dropTextView.isEnabled = true
+        dropTextView.text = ""
+        movingCabMarker?.remove()
+        greyPolyLine?.remove()
+        blackPolyLine?.remove()
+        originMarker?.remove()
+        destinationMarker?.remove()
+        dropLatLng = null
+        greyPolyLine = null
+        blackPolyLine = null
+        originMarker = null
+        destinationMarker = null
+        movingCabMarker = null
     }
 
     override fun onStart() {
@@ -280,6 +318,31 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, MapsView {
         destinationMarker?.remove()
     }
 
+    override fun informTripStart() {
+        statusTextView.text = getString(R.string.you_are_on_a_trip)
+        previousLatlngFromServer = null
+    }
+
+    override fun informTripEnd() {
+        statusTextView.text  = getString(R.string.trip_end)
+        nextRideButton.visibility = View.VISIBLE
+        greyPolyLine?.remove()
+        blackPolyLine?.remove()
+        originMarker?.remove()
+        destinationMarker?.remove()
+    }
+
+    override fun showRoutesNotAvailableError() {
+        val error = getString(R.string.route_not_available_choose_different_locations)
+        Toast.makeText(this, error, Toast.LENGTH_LONG).show()
+        reset()
+    }
+
+    override fun showDirectionApiFailedError(string: String) {
+        Toast.makeText(this, string, Toast.LENGTH_LONG).show()
+        reset()
+    }
+
 
     override fun onRequestPermissionsResult(
         requestCode: Int,
@@ -337,6 +400,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, MapsView {
 
     override fun onDestroy() {
         presenter.onDetach()
+        fusedLocationProviderClient?.removeLocationUpdates(locationCallback)
         super.onDestroy()
     }
 

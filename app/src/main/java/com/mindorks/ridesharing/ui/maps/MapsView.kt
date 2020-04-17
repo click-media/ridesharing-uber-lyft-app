@@ -15,4 +15,12 @@ interface MapsView  {
     fun informCabIsArriving()
 
     fun informCabArrived()
+
+    fun informTripStart()
+
+    fun informTripEnd()
+
+    fun showRoutesNotAvailableError()
+
+    fun showDirectionApiFailedError(string: String)
 }
